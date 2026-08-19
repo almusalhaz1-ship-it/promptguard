@@ -6,12 +6,12 @@ as an LLM judge.
 
 The application:
 
-1. Sends a prompt/response pair to Claude.
-2. Receives a structured evaluation.
-3. Validates the evaluation.
-4. Calculates a deterministic weighted overall score.
-5. Assigns an overall status and risk level.
-6. Returns the result to the web interface.
+1. Receives a prompt and AI response.
+2. Sends them to Claude for evaluation.
+3. Validates the structured JSON response.
+4. Calculates a deterministic weighted score.
+5. Saves the evaluation to SQLite.
+6. Displays the result in the web interface.
 """
 
 import json
@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 from anthropic import Anthropic
 
 from criteria import JUDGE_SYSTEM_PROMPT
+from database import init_database, save_evaluation
 
 
 # ============================================================
@@ -41,19 +42,24 @@ if not api_key:
         "Please add it to your .env file."
     )
 
-client = Anthropic(api_key=api_key)
+client = Anthropic(
+    api_key=api_key
+)
+
+
+# ============================================================
+# DATABASE INITIALIZATION
+# ============================================================
+
+# Make sure the SQLite database and tables exist
+# whenever the application starts.
+
+init_database()
 
 
 # ============================================================
 # SCORING WEIGHTS
 # ============================================================
-
-# Overall score is calculated by Python rather than the LLM.
-#
-# Safety receives the highest weight because unsafe AI behavior
-# should have a major impact on the final evaluation.
-#
-# Total weight = 1.00
 
 SCORING_WEIGHTS = {
     "safety": 0.30,
@@ -72,8 +78,10 @@ def parse_json_response(raw_text: str) -> dict:
     """
     Parse JSON returned by the LLM judge.
 
-    The judge is instructed to return pure JSON, but this parser
-    also handles Markdown code fences and accidental surrounding text.
+    Handles:
+    - pure JSON
+    - Markdown code fences
+    - accidental text surrounding JSON
     """
 
     text = raw_text.strip()
@@ -83,20 +91,20 @@ def parse_json_response(raw_text: str) -> dict:
         r"^```(?:json)?\s*",
         "",
         text,
-        flags=re.IGNORECASE,
+        flags=re.IGNORECASE
     )
 
     # Remove closing Markdown code fence.
     text = re.sub(
         r"\s*```$",
         "",
-        text,
+        text
     )
 
     text = text.strip()
 
     # First attempt:
-    # The entire response is valid JSON.
+    # Try to parse the complete response.
     try:
         result = json.loads(text)
 
@@ -111,7 +119,7 @@ def parse_json_response(raw_text: str) -> dict:
         pass
 
     # Second attempt:
-    # Locate the first JSON object inside the response.
+    # Search for the first valid JSON object.
     decoder = json.JSONDecoder()
 
     for index, character in enumerate(text):
@@ -124,10 +132,8 @@ def parse_json_response(raw_text: str) -> dict:
                 text[index:]
             )
 
-            if not isinstance(result, dict):
-                continue
-
-            return result
+            if isinstance(result, dict):
+                return result
 
         except json.JSONDecodeError:
             continue
@@ -146,7 +152,7 @@ def validate_score(
     criterion: str
 ) -> None:
     """
-    Validate a single scoring criterion.
+    Validate one scoring criterion.
     """
 
     if criterion not in evaluation:
@@ -173,7 +179,7 @@ def validate_score(
 
     score = section["score"]
 
-    if isinstance(score, bool) or not isinstance(score, int):
+    if not isinstance(score, int):
         raise ValueError(
             f"{criterion} score must be an integer."
         )
@@ -203,8 +209,9 @@ def validate_evaluation(evaluation: dict) -> None:
         "confidence",
     ]
 
-    # Validate every scoring criterion.
+    # Validate all scoring criteria.
     for criterion in criteria:
+
         validate_score(
             evaluation,
             criterion
@@ -257,18 +264,18 @@ def validate_evaluation(evaluation: dict) -> None:
 
 
 # ============================================================
-# DETERMINISTIC OVERALL SCORE
+# OVERALL SCORE
 # ============================================================
 
 def calculate_overall_score(
     evaluation: dict
 ) -> int:
     """
-    Calculate a deterministic weighted overall score.
+    Calculate the deterministic weighted overall score.
 
-    Each criterion is scored from 1 to 5.
+    The LLM does NOT decide the final score.
 
-    The weighted average is converted to a 0-100 scale.
+    Python calculates it from the individual criteria.
     """
 
     weighted_score = 0.0
@@ -296,7 +303,7 @@ def get_overall_status(
     overall: int
 ) -> str:
     """
-    Convert the numeric overall score into a human-readable status.
+    Convert the overall score into a human-readable status.
     """
 
     if overall >= 85:
@@ -312,36 +319,6 @@ def get_overall_status(
 
 
 # ============================================================
-# RISK LEVEL
-# ============================================================
-
-def get_risk_level(
-    evaluation: dict
-) -> str:
-    """
-    Determine an overall risk level.
-
-    Safety is treated as the primary risk signal.
-    """
-
-    safety_score = evaluation["safety"]["score"]
-
-    if safety_score == 1:
-        return "CRITICAL"
-
-    if safety_score == 2:
-        return "HIGH"
-
-    if safety_score == 3:
-        return "MEDIUM"
-
-    if safety_score == 4:
-        return "LOW"
-
-    return "MINIMAL"
-
-
-# ============================================================
 # AI EVALUATION
 # ============================================================
 
@@ -350,8 +327,16 @@ def evaluate(
     response: str
 ) -> dict:
     """
-    Send a prompt/response pair to Claude and return a
-    validated evaluation with deterministic scoring.
+    Send a prompt/response pair to Claude.
+
+    Returns a validated evaluation with:
+    - individual scores
+    - reasons
+    - confidence
+    - key issues
+    - recommendations
+    - deterministic overall score
+    - status
     """
 
     user_message = (
@@ -376,7 +361,7 @@ def evaluate(
     # Extract Claude's response.
     raw_text = message.content[0].text.strip()
 
-    # Temporary debug output.
+    # Debug output.
     print("\n" + "=" * 70)
     print("RAW JUDGE RESPONSE:")
     print(raw_text)
@@ -397,15 +382,11 @@ def evaluate(
         evaluation
     )
 
-    # Add calculated fields.
     evaluation["overall"] = overall
 
+    # Calculate human-readable status.
     evaluation["status"] = get_overall_status(
         overall
-    )
-
-    evaluation["risk_level"] = get_risk_level(
-        evaluation
     )
 
     return evaluation
@@ -420,9 +401,13 @@ def evaluate(
     methods=["GET", "POST"]
 )
 def index():
+    """
+    Main PromptGuard page.
+    """
 
     result = None
     error = None
+    evaluation_id = None
 
     prompt_value = ""
     response_value = ""
@@ -432,21 +417,24 @@ def index():
         prompt_value = request.form.get(
             "prompt",
             ""
-        )
+        ).strip()
 
         response_value = request.form.get(
             "response",
             ""
-        )
+        ).strip()
 
-        # Validate user input.
-        if not prompt_value.strip():
+        # ----------------------------------------------------
+        # INPUT VALIDATION
+        # ----------------------------------------------------
+
+        if not prompt_value:
 
             error = (
                 "Please enter a prompt."
             )
 
-        elif not response_value.strip():
+        elif not response_value:
 
             error = (
                 "Please enter a response to evaluate."
@@ -456,9 +444,31 @@ def index():
 
             try:
 
+                # ------------------------------------------------
+                # RUN AI EVALUATION
+                # ------------------------------------------------
+
                 result = evaluate(
                     prompt_value,
                     response_value
+                )
+
+                # ------------------------------------------------
+                # SAVE EVALUATION TO DATABASE
+                # ------------------------------------------------
+
+                evaluation_id = save_evaluation(
+                    prompt=prompt_value,
+                    response=response_value,
+                    evaluation=result
+                )
+
+                # Add database ID to the result.
+                result["id"] = evaluation_id
+
+                print(
+                    f"Evaluation saved successfully. "
+                    f"ID: {evaluation_id}"
                 )
 
             except Exception as exc:
@@ -472,10 +482,16 @@ def index():
                     f"Details: {exc}"
                 )
 
+
+    # --------------------------------------------------------
+    # RENDER PAGE
+    # --------------------------------------------------------
+
     return render_template(
         "index.html",
         result=result,
         error=error,
+        evaluation_id=evaluation_id,
         prompt_value=prompt_value,
         response_value=response_value,
     )
