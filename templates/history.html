@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>PromptGuard — Evaluation History</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="app-shell">
+
+
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
+
+    <header class="topbar">
+
+        <a
+            href="{{ url_for('index') }}"
+            class="brand brand-link"
+        >
+
+            <div class="brand-mark">
+                PG
+            </div>
+
+            <div>
+
+                <h1>
+                    PromptGuard
+                </h1>
+
+                <p>
+                    LLM-as-a-Judge Evaluation System
+                </p>
+
+            </div>
+
+        </a>
+
+
+        <a
+            href="{{ url_for('index') }}"
+            class="nav-button"
+        >
+            + New Evaluation
+        </a>
+
+    </header>
+
+
+    <!-- =====================================================
+         HERO
+         ===================================================== -->
+
+    <section class="history-hero">
+
+        <span class="eyebrow">
+            EVALUATION HISTORY
+        </span>
+
+        <h2>
+            Previous evaluations.
+        </h2>
+
+        <p>
+            Review, compare and inspect previously evaluated
+            AI responses.
+        </p>
+
+    </section>
+
+
+    <!-- =====================================================
+         HISTORY LIST
+         ===================================================== -->
+
+    <section class="history-panel">
+
+        <div class="history-header">
+
+            <div>
+
+                <span class="step-label">
+                    01
+                </span>
+
+                <h3>
+                    Recent Evaluations
+                </h3>
+
+            </div>
+
+            <span class="history-count">
+                {{ evaluations|length }} records
+            </span>
+
+        </div>
+
+
+        {% if evaluations %}
+
+
+        <div class="history-list">
+
+
+            {% for evaluation in evaluations %}
+
+
+            <article class="history-item">
+
+
+                <div class="history-id">
+
+                    <span>
+                        ID
+                    </span>
+
+                    <strong>
+                        #{{ evaluation.id }}
+                    </strong>
+
+                </div>
+
+
+                <div class="history-content">
+
+                    <p class="history-prompt">
+
+                        {{ evaluation.prompt[:120] }}
+
+                        {% if evaluation.prompt|length > 120 %}
+                            ...
+                        {% endif %}
+
+                    </p>
+
+                    <span class="history-date">
+                        {{ evaluation.created_at }}
+                    </span>
+
+                </div>
+
+
+                <div class="history-score">
+
+                    <strong>
+                        {{ evaluation.overall_score }}
+                    </strong>
+
+                    <span>
+                        /100
+                    </span>
+
+                </div>
+
+
+                <div class="history-status">
+
+                    <span>
+                        {{ evaluation.status }}
+                    </span>
+
+                    <small>
+                        {{ evaluation.risk_level }}
+                    </small>
+
+                </div>
+
+
+                <a
+                    href="{{ url_for(
+                        'evaluation_detail',
+                        evaluation_id=evaluation.id
+                    ) }}"
+                    class="view-button"
+                >
+                    View →
+                </a>
+
+
+            </article>
+
+
+            {% endfor %}
+
+
+        </div>
+
+
+        {% else %}
+
+
+        <div class="empty-history">
+
+            <div class="empty-icon">
+                —
+            </div>
+
+            <h3>
+                No evaluations yet
+            </h3>
+
+            <p>
+                Run your first evaluation to create a history record.
+            </p>
+
+            <a
+                href="{{ url_for('index') }}"
+                class="primary-link"
+            >
+                Create Evaluation →
+            </a>
+
+        </div>
+
+
+        {% endif %}
+
+
+    </section>
+
+
+    <!-- =====================================================
+         FOOTER
+         ===================================================== -->
+
+    <footer>
+
+        <span>
+            PromptGuard
+        </span>
+
+        <span>
+            Persistent Evaluation History
+        </span>
+
+        <span>
+            SQLite · Flask · Claude
+        </span>
+
+    </footer>
+
+
+</div>
+
+</body>
+
+</html>

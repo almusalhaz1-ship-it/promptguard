@@ -10,10 +10,18 @@ from datetime import datetime
 from pathlib import Path
 
 
-# Database file will live in the project root.
+# ============================================================
+# DATABASE CONFIGURATION
+# ============================================================
+
 BASE_DIR = Path(__file__).resolve().parent
+
 DATABASE_PATH = BASE_DIR / "promptguard.db"
 
+
+# ============================================================
+# CONNECTION
+# ============================================================
 
 def get_connection():
     """
@@ -29,9 +37,15 @@ def get_connection():
     return connection
 
 
+# ============================================================
+# DATABASE INITIALIZATION
+# ============================================================
+
 def init_database():
     """
-    Create the evaluations table if it does not already exist.
+    Create the evaluations table if it does not exist.
+
+    Also performs a lightweight migration for existing databases.
     """
 
     connection = get_connection()
@@ -63,6 +77,8 @@ def init_database():
 
                 status TEXT NOT NULL,
 
+                risk_level TEXT NOT NULL DEFAULT 'UNKNOWN',
+
                 key_issues TEXT NOT NULL,
 
                 recommendations TEXT NOT NULL,
@@ -72,12 +88,41 @@ def init_database():
             """
         )
 
+        # ----------------------------------------------------
+        # Migration:
+        # Add risk_level to older databases if necessary.
+        # ----------------------------------------------------
+
+        columns = connection.execute(
+            """
+            PRAGMA table_info(evaluations)
+            """
+        ).fetchall()
+
+        column_names = {
+            column["name"]
+            for column in columns
+        }
+
+        if "risk_level" not in column_names:
+
+            connection.execute(
+                """
+                ALTER TABLE evaluations
+                ADD COLUMN risk_level TEXT NOT NULL DEFAULT 'UNKNOWN'
+                """
+            )
+
         connection.commit()
 
     finally:
 
         connection.close()
 
+
+# ============================================================
+# SAVE EVALUATION
+# ============================================================
 
 def save_evaluation(
     prompt: str,
@@ -105,15 +150,17 @@ def save_evaluation(
                 confidence_score,
                 overall_score,
                 status,
+                risk_level,
                 key_issues,
                 recommendations,
                 created_at
             )
 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 prompt,
+
                 response,
 
                 evaluation["safety"]["score"],
@@ -131,6 +178,11 @@ def save_evaluation(
                 evaluation["overall"],
 
                 evaluation["status"],
+
+                evaluation.get(
+                    "risk_level",
+                    "UNKNOWN"
+                ),
 
                 json.dumps(
                     evaluation["key_issues"],
@@ -155,7 +207,13 @@ def save_evaluation(
         connection.close()
 
 
-def get_evaluation(evaluation_id: int):
+# ============================================================
+# GET SINGLE EVALUATION
+# ============================================================
+
+def get_evaluation(
+    evaluation_id: int
+):
     """
     Retrieve one evaluation by ID.
     """
@@ -183,7 +241,13 @@ def get_evaluation(evaluation_id: int):
         connection.close()
 
 
-def get_recent_evaluations(limit: int = 20):
+# ============================================================
+# GET RECENT EVALUATIONS
+# ============================================================
+
+def get_recent_evaluations(
+    limit: int = 50
+):
     """
     Retrieve the most recent evaluations.
     """
@@ -196,8 +260,10 @@ def get_recent_evaluations(limit: int = 20):
             """
             SELECT
                 id,
+                prompt,
                 overall_score,
                 status,
+                risk_level,
                 created_at
             FROM evaluations
             ORDER BY id DESC
@@ -216,7 +282,13 @@ def get_recent_evaluations(limit: int = 20):
         connection.close()
 
 
-def delete_evaluation(evaluation_id: int) -> bool:
+# ============================================================
+# DELETE EVALUATION
+# ============================================================
+
+def delete_evaluation(
+    evaluation_id: int
+) -> bool:
     """
     Delete an evaluation by ID.
 

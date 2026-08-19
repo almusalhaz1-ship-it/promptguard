@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        PromptGuard — Evaluation #{{ evaluation.id }}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="app-shell">
+
+
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
+
+    <header class="topbar">
+
+        <a
+            href="{{ url_for('index') }}"
+            class="brand brand-link"
+        >
+
+            <div class="brand-mark">
+                PG
+            </div>
+
+            <div>
+
+                <h1>
+                    PromptGuard
+                </h1>
+
+                <p>
+                    LLM-as-a-Judge Evaluation System
+                </p>
+
+            </div>
+
+        </a>
+
+
+        <a
+            href="{{ url_for('history') }}"
+            class="nav-button"
+        >
+            ← History
+        </a>
+
+    </header>
+
+
+    <!-- =====================================================
+         HERO
+         ===================================================== -->
+
+    <section class="history-hero">
+
+        <span class="eyebrow">
+            EVALUATION #{{ evaluation.id }}
+        </span>
+
+        <h2>
+            Evaluation report.
+        </h2>
+
+        <p>
+            {{ evaluation.created_at }}
+        </p>
+
+    </section>
+
+
+    <!-- =====================================================
+         SUMMARY
+         ===================================================== -->
+
+    <section class="results-section">
+
+
+        <div class="summary-grid">
+
+
+            <div class="overall-card">
+
+                <span class="card-label">
+                    OVERALL SCORE
+                </span>
+
+                <div class="overall-score">
+
+                    {{ evaluation.overall_score }}
+
+                    <small>
+                        /100
+                    </small>
+
+                </div>
+
+                <div class="overall-status">
+                    {{ evaluation.status }}
+                </div>
+
+            </div>
+
+
+            <div class="risk-card">
+
+                <span class="card-label">
+                    RISK LEVEL
+                </span>
+
+                <div class="risk-value">
+                    {{ evaluation.risk_level }}
+                </div>
+
+                <p>
+                    Based primarily on safety evaluation.
+                </p>
+
+            </div>
+
+
+            <div class="confidence-card">
+
+                <span class="card-label">
+                    JUDGE CONFIDENCE
+                </span>
+
+                <div class="confidence-score">
+                    {{ evaluation.confidence_score }}/5
+                </div>
+
+                <p>
+                    Confidence recorded during evaluation.
+                </p>
+
+            </div>
+
+
+        </div>
+
+
+        <!-- =================================================
+             INPUTS
+             ================================================= -->
+
+        <div class="detail-input-grid">
+
+
+            <div class="detail-text-card">
+
+                <span class="card-label">
+                    ORIGINAL PROMPT
+                </span>
+
+                <p>
+                    {{ evaluation.prompt }}
+                </p>
+
+            </div>
+
+
+            <div class="detail-text-card">
+
+                <span class="card-label">
+                    AI RESPONSE
+                </span>
+
+                <p>
+                    {{ evaluation.response }}
+                </p>
+
+            </div>
+
+
+        </div>
+
+
+        <!-- =================================================
+             CRITERIA
+             ================================================= -->
+
+        <div class="criteria-section">
+
+            <div class="section-title">
+
+                <span>
+                    Evaluation Dimensions
+                </span>
+
+                <small>
+                    Stored evaluation
+                </small>
+
+            </div>
+
+
+            <div class="criteria-grid">
+
+
+                <article class="criterion-card">
+
+                    <div class="criterion-top">
+
+                        <div>
+
+                            <span class="criterion-number">
+                                01
+                            </span>
+
+                            <h4>
+                                Safety
+                            </h4>
+
+                        </div>
+
+                        <strong>
+                            {{ evaluation.safety_score }}/5
+                        </strong>
+
+                    </div>
+
+                    <div class="score-track">
+
+                        <div
+                            class="score-fill"
+                            style="width: {{ evaluation.safety_score * 20 }}%;"
+                        ></div>
+
+                    </div>
+
+                </article>
+
+
+                <article class="criterion-card">
+
+                    <div class="criterion-top">
+
+                        <div>
+
+                            <span class="criterion-number">
+                                02
+                            </span>
+
+                            <h4>
+                                Accuracy
+                            </h4>
+
+                        </div>
+
+                        <strong>
+                            {{ evaluation.accuracy_score }}/5
+                        </strong>
+
+                    </div>
+
+                    <div class="score-track">
+
+                        <div
+                            class="score-fill"
+                            style="width: {{ evaluation.accuracy_score * 20 }}%;"
+                        ></div>
+
+                    </div>
+
+                </article>
+
+
+                <article class="criterion-card">
+
+                    <div class="criterion-top">
+
+                        <div>
+
+                            <span class="criterion-number">
+                                03
+                            </span>
+
+                            <h4>
+                                Relevance
+                            </h4>
+
+                        </div>
+
+                        <strong>
+                            {{ evaluation.relevance_score }}/5
+                        </strong>
+
+                    </div>
+
+                    <div class="score-track">
+
+                        <div
+                            class="score-fill"
+                            style="width: {{ evaluation.relevance_score * 20 }}%;"
+                        ></div>
+
+                    </div>
+
+                </article>
+
+
+                <article class="criterion-card">
+
+                    <div class="criterion-top">
+
+                        <div>
+
+                            <span class="criterion-number">
+                                04
+                            </span>
+
+                            <h4>
+                                Helpfulness
+                            </h4>
+
+                        </div>
+
+                        <strong>
+                            {{ evaluation.helpfulness_score }}/5
+                        </strong>
+
+                    </div>
+
+                    <div class="score-track">
+
+                        <div
+                            class="score-fill"
+                            style="width: {{ evaluation.helpfulness_score * 20 }}%;"
+                        ></div>
+
+                    </div>
+
+                </article>
+
+
+                <article class="criterion-card">
+
+                    <div class="criterion-top">
+
+                        <div>
+
+                            <span class="criterion-number">
+                                05
+                            </span>
+
+                            <h4>
+                                Tone & Clarity
+                            </h4>
+
+                        </div>
+
+                        <strong>
+                            {{ evaluation.tone_clarity_score }}/5
+                        </strong>
+
+                    </div>
+
+                    <div class="score-track">
+
+                        <div
+                            class="score-fill"
+                            style="width: {{ evaluation.tone_clarity_score * 20 }}%;"
+                        ></div>
+
+                    </div>
+
+                </article>
+
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             ISSUES & RECOMMENDATIONS
+             ================================================= -->
+
+        <div class="insights-grid">
+
+
+            <div class="insight-card">
+
+                <div class="section-title">
+
+                    <span>
+                        Key Issues
+                    </span>
+
+                    <small>
+                        Detected problems
+                    </small>
+
+                </div>
+
+
+                {% if evaluation.key_issues %}
+
+                <ul>
+
+                    {% for issue in evaluation.key_issues %}
+
+                    <li>
+
+                        <span class="bullet">
+                            !
+                        </span>
+
+                        {{ issue }}
+
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+                {% else %}
+
+                <p class="empty-state">
+                    No significant issues detected.
+                </p>
+
+                {% endif %}
+
+
+            </div>
+
+
+            <div class="insight-card">
+
+                <div class="section-title">
+
+                    <span>
+                        Recommendations
+                    </span>
+
+                    <small>
+                        Suggested improvements
+                    </small>
+
+                </div>
+
+
+                {% if evaluation.recommendations %}
+
+                <ul>
+
+                    {% for recommendation in evaluation.recommendations %}
+
+                    <li>
+
+                        <span class="bullet">
+                            →
+                        </span>
+
+                        {{ recommendation }}
+
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+                {% else %}
+
+                <p class="empty-state">
+                    No additional recommendations.
+                </p>
+
+                {% endif %}
+
+
+            </div>
+
+
+        </div>
+
+
+        <!-- =================================================
+             DELETE
+             ================================================= -->
+
+        <div class="danger-zone">
+
+            <div>
+
+                <strong>
+                    Delete this evaluation
+                </strong>
+
+                <p>
+                    This permanently removes the stored evaluation
+                    from the local database.
+                </p>
+
+            </div>
+
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'delete_history_evaluation',
+                    evaluation_id=evaluation.id
+                ) }}"
+                onsubmit="return confirm(
+                    'Delete this evaluation permanently?'
+                );"
+            >
+
+                <button
+                    type="submit"
+                    class="delete-button"
+                >
+                    Delete Evaluation
+                </button>
+
+            </form>
+
+        </div>
+
+
+    </section>
+
+
+    <!-- =====================================================
+         FOOTER
+         ===================================================== -->
+
+    <footer>
+
+        <span>
+            PromptGuard
+        </span>
+
+        <span>
+            Evaluation #{{ evaluation.id }}
+        </span>
+
+        <span>
+            SQLite · Flask · Claude
+        </span>
+
+    </footer>
+
+
+</div>
+
+</body>
+
+</html>
